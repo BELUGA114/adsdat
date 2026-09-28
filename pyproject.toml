@@ -1,0 +1,11 @@
+[project]
+name = "geoads"
+version = "0.1.0"
+description = "定时将 v2ray-rules-dat 广告域名与 AWAvenue 取并集，编译为 geoads.dat"
+requires-python = ">=3.10"
+dependencies = [
+    "protobuf>=5.26",
+]
+
+[tool.uv]
+package = false
