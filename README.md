@@ -6,10 +6,16 @@
 
 ## 使用
 
-客户端（v2ray / Xray / mihomo / sing-box 等）将 geosite 数据源指向本仓库产物，并按类别 `geosite:ads` 引用：
+`geoads.dat` 是标准的 v2ray/Xray geosite 数据文件，内部只含一个类别，名为 `ads`：
 
-- Release 直链：`https://github.com/<owner>/<repo>/releases/latest/download/geoads.dat`
-- jsdelivr CDN：`https://cdn.jsdelivr.net/gh/<owner>/<repo>@release/geoads.dat`
+- Release 直链：`https://github.com/BELUGA114/adsdat/releases/latest/download/geoads.dat`
+- jsdelivr CDN：`https://cdn.jsdelivr.net/gh/BELUGA114/adsdat@release/geoads.dat`
+
+引用方式：
+
+- **Xray / v2ray（推荐）**：把 `geoads.dat` 放进资源目录（`XRAY_LOCATION_ASSET` 指向、与 geoip.dat/geosite.dat 同处的目录），路由规则用外部文件语法 `ext:geoads.dat:ads`。保留自定义文件名，且与官方 `geosite.dat` 并存
+- **替换默认库**：把它改名为 `geosite.dat` 覆盖官方资源文件，再用 `geosite:ads`。但这样会丢掉官方库里的其它类别（`geosite:cn`、`geosite:google` 等），一般不推荐
+- **mihomo（Clash.Meta）**：geodata 模式下把 geosite 数据库指向本文件（本地放为 `geosite.dat`，或用 `geox-url.geosite` 指到上面的直链），规则写 `GEOSITE,ads,REJECT`
 
 同时发布并集明文 `geoads.txt`，便于审阅与二次加工。
 
