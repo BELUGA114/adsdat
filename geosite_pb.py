@@ -34,6 +34,26 @@ def _geositelist_cls():
     f.name, f.number = "value", 2
     f.label = dpb.FieldDescriptorProto.LABEL_OPTIONAL
     f.type = dpb.FieldDescriptorProto.TYPE_STRING
+    # Domain.attribute（如 @cn / @ads）必须建模，否则完整 geosite 往返会丢属性
+    attr = dom.nested_type.add()
+    attr.name = "Attribute"
+    af = attr.field.add()
+    af.name, af.number = "key", 1
+    af.label = dpb.FieldDescriptorProto.LABEL_OPTIONAL
+    af.type = dpb.FieldDescriptorProto.TYPE_STRING
+    af = attr.field.add()
+    af.name, af.number = "bool_value", 2
+    af.label = dpb.FieldDescriptorProto.LABEL_OPTIONAL
+    af.type = dpb.FieldDescriptorProto.TYPE_BOOL
+    af = attr.field.add()
+    af.name, af.number = "int_value", 3
+    af.label = dpb.FieldDescriptorProto.LABEL_OPTIONAL
+    af.type = dpb.FieldDescriptorProto.TYPE_INT64
+    f = dom.field.add()
+    f.name, f.number = "attribute", 3
+    f.label = dpb.FieldDescriptorProto.LABEL_REPEATED
+    f.type = dpb.FieldDescriptorProto.TYPE_MESSAGE
+    f.type_name = ".router.Domain.Attribute"
 
     gs = fdp.message_type.add()
     gs.name = "GeoSite"
