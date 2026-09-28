@@ -1,4 +1,4 @@
-name: Build geoads.dat
+name: Build geoads.dat + geosite.dat
 
 on:
   schedule:
@@ -24,16 +24,16 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Build geoads.dat
-        run: uv run python build.py --category ads --out-dir dist
+      - name: Build data files
+        run: uv run python build.py --out-dir dist
 
       - id: meta
         run: |
           echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
           echo "stamp=$(date -u +%FT%TZ)" >> "$GITHUB_OUTPUT"
 
-      - name: Generate checksum
-        run: cd dist && sha256sum geoads.dat > geoads.dat.sha256
+      - name: Generate checksums
+        run: cd dist && sha256sum geosite.dat geoads.dat geoads.txt > SHA256SUMS
 
       # 推送到 release 分支：产物独立成孤儿分支，供 jsdelivr / raw 直链使用
       - name: Publish to release branch
@@ -44,7 +44,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -q -b release
           git add -A
-          git commit -q -m "Update geoads.dat (${{ steps.meta.outputs.stamp }})"
+          git commit -q -m "Update data files (${{ steps.meta.outputs.stamp }})"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" release
 
       - name: Create GitHub Release
@@ -53,6 +53,7 @@ jobs:
           tag_name: ${{ steps.meta.outputs.date }}
           name: geoads ${{ steps.meta.outputs.date }}
           files: |
+            dist/geosite.dat
             dist/geoads.dat
-            dist/geoads.dat.sha256
             dist/geoads.txt
+            dist/SHA256SUMS
