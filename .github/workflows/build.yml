@@ -1,0 +1,58 @@
+name: Build geoads.dat
+
+on:
+  schedule:
+    # 每周日 23:00 UTC（北京时间周一 07:00）构建一次，约每 7 天
+    - cron: "0 23 * * 0"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-geoads
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Build geoads.dat
+        run: uv run python build.py --category ads --out-dir dist
+
+      - id: meta
+        run: |
+          echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          echo "stamp=$(date -u +%FT%TZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Generate checksum
+        run: cd dist && sha256sum geoads.dat > geoads.dat.sha256
+
+      # 推送到 release 分支：产物独立成孤儿分支，供 jsdelivr / raw 直链使用
+      - name: Publish to release branch
+        run: |
+          cd dist
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -q -b release
+          git add -A
+          git commit -q -m "Update geoads.dat (${{ steps.meta.outputs.stamp }})"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" release
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.date }}
+          name: geoads ${{ steps.meta.outputs.date }}
+          files: |
+            dist/geoads.dat
+            dist/geoads.dat.sha256
+            dist/geoads.txt
