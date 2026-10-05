@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write      # 用于申请 Sigstore 短期签名证书
+  attestations: write  # 用于持久化构建溯源证明
 
 concurrency:
   group: build-geoads
@@ -25,17 +27,33 @@ jobs:
           enable-cache: true
 
       - name: Build data files
-        run: uv run python build.py --out-dir dist
+        run: uv run python build.py --out-dir dist --source-revision "${{ github.sha }}"
 
+      # tag 需每次构建唯一：同日重跑若复用 tag，会覆盖既有 Release 的附件，
+      # 破坏「已发布版本不可变」。时间戳精确到秒且字典序即时序
       - id: meta
         run: |
-          echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
           echo "stamp=$(date -u +%FT%TZ)" >> "$GITHUB_OUTPUT"
+          echo "tag=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Generate checksums
         run: cd dist && sha256sum geosite.dat geoads.dat geoads.txt > SHA256SUMS
 
-      # 推送到 release 分支：产物独立成孤儿分支，供 jsdelivr / raw 直链使用
+      # 为三份产物生成 SLSA 构建溯源证明（签名需要 id-token，故仅公共仓库可用）。
+      # actions/attest 自 v4 起是 attest-build-provenance 的上游实现，官方建议新实现直接用它；
+      # 不传 sbom-path / predicate 即默认产出 provenance 证明。
+      # 失败即中止，不发布无溯源证明的数据
+      - name: Attest build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            dist/geosite.dat
+            dist/geoads.dat
+            dist/geoads.txt
+
+      # 推送到 release 分支：产物独立成孤儿分支，供 jsdelivr / raw 直链使用。
+      # 只放 jsDelivr 需要取用的文件，故显式列出而非 git add -A；
+      # geoads.txt（约 4MB 明文）仅供审阅，不作为 CDN 资产，只随 Release 附件发布
       - name: Publish to release branch
         run: |
           cd dist
@@ -43,17 +61,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -q -b release
-          git add -A
+          git add geosite.dat geoads.dat SHA256SUMS SOURCES
           git commit -q -m "Update data files (${{ steps.meta.outputs.stamp }})"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" release
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.meta.outputs.date }}
-          name: geoads ${{ steps.meta.outputs.date }}
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: geoads ${{ steps.meta.outputs.tag }}
           files: |
             dist/geosite.dat
             dist/geoads.dat
             dist/geoads.txt
             dist/SHA256SUMS
+            dist/SOURCES

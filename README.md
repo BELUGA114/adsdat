@@ -19,7 +19,23 @@ jsdelivr CDN：
 - geoads.dat：`https://cdn.jsdelivr.net/gh/BELUGA114/adsdat@release/geoads.dat`
 - geosite.dat：`https://cdn.jsdelivr.net/gh/BELUGA114/adsdat@release/geosite.dat`
 
-另发布明文 `geoads.txt` 与校验和 `SHA256SUMS`
+另发布明文 `geoads.txt`、校验和 `SHA256SUMS` 与来源记录 `SOURCES`
+
+> `release` 分支只同步 `geosite.dat` / `geoads.dat` / `SHA256SUMS` / `SOURCES` 供 jsDelivr 取用；
+> `geoads.txt` 体积较大且仅供审阅，只在 Release 附件中提供
+
+## 溯源与校验
+
+每次构建都会为三份产物生成 [SLSA 构建溯源证明](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations)（Sigstore 签名），可用 GitHub CLI 核验产物确实来自本仓库该次工作流：
+
+```bash
+gh attestation verify geosite.dat --repo BELUGA114/adsdat
+```
+
+- **`SHA256SUMS`** —— 三份产物的校验和
+- **`SOURCES`** —— 本次构建实际取用的上游地址及其内容摘要（`sha256` / ETag / Last-Modified），以及产出该版本的源码提交。上游按分支或「最新发布」地址取用、内容随时间变化，故 `sha256` 才是本次所用内容的唯一标识
+
+> `SHA256SUMS` 与产物同源发布，只能防传输损坏；要确认产物来源可信，请用上面的溯源证明核验
 
 ## 使用
 
