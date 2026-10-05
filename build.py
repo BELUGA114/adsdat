@@ -1,16 +1,20 @@
-"""拉取 AWAvenue geosite 明文与 v2ray-rules-dat 完整 geosite.dat，产出两份数据：
+"""拉取 AWAvenue geosite 明文与 v2ray-rules-dat 完整 geosite.dat，产出下列文件：
 
   - geosite.dat  完整 geosite（保留全部类别与属性），AWAvenue 并入 category-ads-all
   - geoads.dat   仅含单一类别 ads（= 合并后的 category-ads-all），便于用 ext: 单独引用
   - geoads.txt   ads 类别明文，便于审阅
+  - SOURCES      本次构建实际取用的上游地址与内容摘要，供审计与复现
 
 上游 v2ray-rules-dat 与 AWAvenue 均为 GPL-3.0，本产物按 GPL-3.0 分发；来源见 README。
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import sys
 import urllib.request
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 from geosite_pb import Entry, GeoSiteList, NAME_TO_TYPE, TYPE_TO_NAME, dump, load
@@ -30,24 +34,32 @@ _KNOWN_PREFIX = {"full", "domain", "keyword", "regexp"}
 _MIN_BYTES = 1024  # 下载结果小于此值视为异常，避免发布空表
 
 
-def fetch_bytes(urls: list[str]) -> bytes:
+@dataclass(frozen=True)
+class Source:
+    """一次成功的上游下载，连同其来源信息，用于写入 SOURCES。"""
+
+    url: str
+    data: bytes
+    etag: str
+    last_modified: str
+
+
+def fetch_bytes(urls: list[str]) -> Source:
     last_err: Exception | None = None
     for url in urls:
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "geoads-builder"})
             with urllib.request.urlopen(req, timeout=120) as resp:
                 data = resp.read()
+                etag = resp.headers.get("ETag") or ""
+                last_modified = resp.headers.get("Last-Modified") or ""
             if len(data) < _MIN_BYTES:
                 raise ValueError(f"内容过小({len(data)}B)，疑似异常：{url}")
-            return data
+            return Source(url=url, data=data, etag=etag, last_modified=last_modified)
         except Exception as exc:  # 记录并回退到下一个镜像
             last_err = exc
             print(f"  [warn] {url} 失败：{exc}", file=sys.stderr)
     raise RuntimeError(f"全部地址均失败，最后错误：{last_err}")
-
-
-def fetch_text(urls: list[str]) -> str:
-    return fetch_bytes(urls).decode("utf-8")
 
 
 def parse_list(text: str) -> list[Entry]:
@@ -127,14 +139,40 @@ def _verify(geosite_bytes: bytes, cats_before: int, attrs_before: int,
         raise RuntimeError("geoads.dat 回读条数不一致")
 
 
-def build(out_dir: Path) -> None:
+def _write_sources(out_dir: Path, sources: dict[str, Source], source_revision: str | None) -> None:
+    """写出上游来源记录。
+
+    上游按分支或「最新发布」地址取用，内容随时间变化，故 sha256 才是本次构建所用
+    内容的唯一标识；ETag / Last-Modified 仅作辅助参考。
+    """
+    lines = [
+        "# 本次构建实际取用的上游地址与内容摘要，供审计与复现",
+        f"generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}",
+        f"source_revision: {source_revision or 'unknown'}",
+    ]
+    for label, src in sources.items():
+        lines += [
+            "",
+            f"[{label}]",
+            f"url: {src.url}",
+            f"sha256: {hashlib.sha256(src.data).hexdigest()}",
+            f"bytes: {len(src.data)}",
+            f"etag: {src.etag}",
+            f"last_modified: {src.last_modified}",
+        ]
+    (out_dir / "SOURCES").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def build(out_dir: Path, source_revision: str | None = None) -> None:
     print("拉取 AWAvenue geosite 明文 ...")
-    awavenue = parse_list(fetch_text(AWAVENUE_URLS))
+    awavenue_src = fetch_bytes(AWAVENUE_URLS)
+    awavenue = parse_list(awavenue_src.data.decode("utf-8"))
     print(f"  {len(awavenue)} 条")
 
     print("拉取 v2ray-rules-dat 完整 geosite.dat ...")
+    geosite_src = fetch_bytes(GEOSITE_URLS)
     lst = GeoSiteList()
-    lst.ParseFromString(fetch_bytes(GEOSITE_URLS))
+    lst.ParseFromString(geosite_src.data)
     cats_before = len(lst.entry)
     attrs_before = sum(len(d.attribute) for e in lst.entry for d in e.domain)
     ads_before = len(next(e for e in lst.entry if e.country_code.upper() == ADS_ALL).domain)
@@ -150,21 +188,26 @@ def build(out_dir: Path) -> None:
     ads_dat = dump({"ADS": merged})
     (out_dir / "geoads.dat").write_bytes(ads_dat)
     lines = [(v if t == "domain" else f"{t}:{v}") for t, v in merged]
-    (out_dir / "geoads.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # 显式固定换行符：放任 Windows 把 \n 转成 \r\n，会让本地构建的 geoads.txt
+    # 与 CI 产物字节不同，SHA256SUMS 无法跨平台比对
+    (out_dir / "geoads.txt").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
     _verify(geosite_bytes, cats_before, attrs_before, ads_before, added, ads_dat, merged)
-    print(f"已写出 geosite.dat / geoads.dat / geoads.txt 到 {out_dir}，校验通过")
+    _write_sources(out_dir, {"awa-ads": awavenue_src, "geosite": geosite_src}, source_revision)
+    print(f"已写出 geosite.dat / geoads.dat / geoads.txt / SOURCES 到 {out_dir}，校验通过")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="合并 AWAvenue 与 v2ray-rules-dat 广告规则")
     ap.add_argument("--out-dir", type=Path, default=Path("dist"), help="产物输出目录")
+    ap.add_argument("--source-revision", default=None,
+                    help="写入 SOURCES 的源码版本，CI 传 github.sha；本地构建可省略")
     args = ap.parse_args()
     # Windows 控制台默认非 UTF-8，重配输出流以正确显示中文进度
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8")
-    build(args.out_dir)
+    build(args.out_dir, args.source_revision)
 
 
 if __name__ == "__main__":
