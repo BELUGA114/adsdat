@@ -1,0 +1,17 @@
+# 本次构建实际取用的上游地址与内容摘要，供审计与复现
+generated: 2026-10-26T01:05:16Z
+source_revision: 70294d670c0b4dabf694ba71d61d46e725c0ac88
+
+[awa-ads]
+url: https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Geosite.txt
+sha256: acf211f3bda48721b1a664a043801280799d92087eb88b809b7d6b53e3a66ff2
+bytes: 25012
+etag: "b84627e787f3bab1e133f30ea8dba10652ee8f8e997b8a912e00ef23e73d6ee5"
+last_modified: 
+
+[geosite]
+url: https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
+sha256: e16ee9af893247f9c8b15c5259e5c0a6ae491b85ee351c22f1954e696ebb8997
+bytes: 11391470
+etag: "0x8DF321B174DBD88"
+last_modified: Sat, 24 Oct 2026 22:06:44 GMT
