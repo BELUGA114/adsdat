@@ -15,9 +15,14 @@ concurrency:
   group: build-geoads
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -32,14 +37,36 @@ jobs:
       # tag 需每次构建唯一：同日重跑若复用 tag，会覆盖既有 Release 的附件，
       # 破坏「已发布版本不可变」。时间戳精确到秒且字典序即时序
       - id: meta
+        env:
+          SOURCE_REVISION: ${{ github.sha }}
         run: |
           echo "stamp=$(date -u +%FT%TZ)" >> "$GITHUB_OUTPUT"
           echo "tag=$(date -u +%Y%m%dT%H%M%SZ)" >> "$GITHUB_OUTPUT"
+          case "$GITHUB_EVENT_NAME" in
+            schedule)
+              notes="Automatically published by scheduled workflow."
+              ;;
+            workflow_dispatch)
+              notes="Manually triggered via GitHub Actions."
+              ;;
+            *)
+              notes="Published by GitHub Actions."
+              ;;
+          esac
+          echo "notes=${notes} GeoAds source: ${SOURCE_REVISION}" >> "$GITHUB_OUTPUT"
+
+      - name: Compress DAT files
+        working-directory: dist
+        run: |
+          for file in geosite.dat geoads.dat; do
+            gzip -6 -n -c -- "$file" > "${file}.gz"
+          done
 
       - name: Generate checksums
-        run: cd dist && sha256sum geosite.dat geoads.dat geoads.txt > SHA256SUMS
+        working-directory: dist
+        run: sha256sum geosite.dat geoads.dat geoads.txt geosite.dat.gz geoads.dat.gz SOURCES > SHA256SUMS
 
-      # 为三份产物生成 SLSA 构建溯源证明（签名需要 id-token，故仅公共仓库可用）。
+      # 为数据文件及压缩包生成 SLSA 构建溯源证明（签名需要 id-token，故仅公共仓库可用）。
       # actions/attest 自 v4 起是 attest-build-provenance 的上游实现，官方建议新实现直接用它；
       # 不传 sbom-path / predicate 即默认产出 provenance 证明。
       # 失败即中止，不发布无溯源证明的数据
@@ -50,6 +77,8 @@ jobs:
             dist/geosite.dat
             dist/geoads.dat
             dist/geoads.txt
+            dist/geosite.dat.gz
+            dist/geoads.dat.gz
 
       # 推送到 release 分支：产物独立成孤儿分支，供 jsdelivr / raw 直链使用。
       # 只放 jsDelivr 需要取用的文件，故显式列出而非 git add -A；
@@ -70,9 +99,12 @@ jobs:
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           name: geoads ${{ steps.meta.outputs.tag }}
+          body: ${{ steps.meta.outputs.notes }}
           files: |
             dist/geosite.dat
             dist/geoads.dat
             dist/geoads.txt
+            dist/geosite.dat.gz
+            dist/geoads.dat.gz
             dist/SHA256SUMS
             dist/SOURCES
