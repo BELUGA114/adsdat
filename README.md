@@ -1,6 +1,8 @@
 # geoads
 
-将 [Xray-rules-dat](https://github.com/XTLS/Xray-rules-dat) 的广告域名（`category-ads-all`）与 [AWAvenue-Ads-Rule](https://github.com/TG-Twilight/AWAvenue-Ads-Rule)（以国内 App 广告/SDK 为主）合并，通过 GitHub Actions 每 7 天自动构建
+将 [Xray-rules-dat](https://github.com/XTLS/Xray-rules-dat) 的广告域名（`category-ads-all`）与 [AWAvenue-Ads-Rule](https://github.com/TG-Twilight/AWAvenue-Ads-Rule)（以国内 App 广告/SDK 为主）合并，通过 GitHub Actions 每天北京时间 11:30 自动构建
+
+上游[构建计划](https://github.com/XTLS/Xray-rules-dat/blob/main/.github/workflows/release.yml)为每天 18:00 UTC（北京时间次日 02:00），实际发布可能因 GitHub Actions 排队延迟数小时。本项目计划在每天 03:30 UTC（北京时间 11:30）同步，较上游计划时间延后 9 小时 30 分钟；实际执行时间以 Actions 调度为准。
 
 产出两份数据文件：
 

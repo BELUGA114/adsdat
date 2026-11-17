@@ -2,8 +2,9 @@ name: Build geoads.dat + geosite.dat
 
 on:
   schedule:
-    # 每周日 23:00 UTC（北京时间周一 07:00）构建一次，约每 7 天
-    - cron: "0 23 * * 0"
+    # 上游每日 18:00 UTC（北京时间次日 02:00）计划构建，实际发布可能延迟数小时
+    # 本项目每日 03:30 UTC（北京时间 11:30）同步，为上游发布留出缓冲
+    - cron: "30 3 * * *"
   workflow_dispatch: {}
 
 permissions:
