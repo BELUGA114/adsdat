@@ -1,11 +1,11 @@
-"""拉取 AWAvenue geosite 明文与 v2ray-rules-dat 完整 geosite.dat，产出下列文件：
+"""拉取 AWAvenue geosite 明文与 Xray-rules-dat 完整 geosite.dat，产出下列文件：
 
   - geosite.dat  完整 geosite（保留全部类别与属性），AWAvenue 并入 category-ads-all
   - geoads.dat   仅含单一类别 ads（= 合并后的 category-ads-all），便于用 ext: 单独引用
   - geoads.txt   ads 类别明文，便于审阅
   - SOURCES      本次构建实际取用的上游地址与内容摘要，供审计与复现
 
-上游 v2ray-rules-dat 与 AWAvenue 均为 GPL-3.0，本产物按 GPL-3.0 分发；来源见 README。
+上游 Xray-rules-dat 与 AWAvenue 均为 GPL-3.0，本产物按 GPL-3.0 分发；来源见 README。
 """
 from __future__ import annotations
 
@@ -24,9 +24,7 @@ AWAVENUE_URLS = [
     "https://cdn.jsdelivr.net/gh/TG-Twilight/AWAvenue-Ads-Rule@main/Filters/AWAvenue-Ads-Rule-Geosite.txt",
 ]
 GEOSITE_URLS = [
-    "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat",
-    "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat",
-    "https://fastly.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat",
+    "https://github.com/XTLS/Xray-rules-dat/releases/latest/download/geosite.dat",
 ]
 ADS_ALL = "CATEGORY-ADS-ALL"
 
@@ -169,7 +167,7 @@ def build(out_dir: Path, source_revision: str | None = None) -> None:
     awavenue = parse_list(awavenue_src.data.decode("utf-8"))
     print(f"  {len(awavenue)} 条")
 
-    print("拉取 v2ray-rules-dat 完整 geosite.dat ...")
+    print("拉取 Xray-rules-dat 完整 geosite.dat ...")
     geosite_src = fetch_bytes(GEOSITE_URLS)
     lst = GeoSiteList()
     lst.ParseFromString(geosite_src.data)
@@ -198,7 +196,7 @@ def build(out_dir: Path, source_revision: str | None = None) -> None:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="合并 AWAvenue 与 v2ray-rules-dat 广告规则")
+    ap = argparse.ArgumentParser(description="合并 AWAvenue 与 Xray-rules-dat 广告规则")
     ap.add_argument("--out-dir", type=Path, default=Path("dist"), help="产物输出目录")
     ap.add_argument("--source-revision", default=None,
                     help="写入 SOURCES 的源码版本，CI 传 github.sha；本地构建可省略")
