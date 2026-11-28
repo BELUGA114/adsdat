@@ -1,0 +1,17 @@
+# 本次构建实际取用的上游地址与内容摘要，供审计与复现
+generated: 2026-11-28T12:04:22Z
+source_revision: f95d36d8cc3a6b7ee2272313e3edd4bd39eef593
+
+[awa-ads]
+url: https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Geosite.txt
+sha256: 3cd53bdbfb46c04d4d8ae89b20fdb88bf575dc5b57fd1db552002be527228d34
+bytes: 25318
+etag: "48513ed334ee9f3e96d6a2c2f16a44692877dd847c218424398613f85f82c0db"
+last_modified: 
+
+[geosite]
+url: https://github.com/XTLS/Xray-rules-dat/releases/latest/download/geosite.dat
+sha256: ff32ecaf4a8c1d010fe89e1228fdd77f5f4d8e540ee0160b853cb13d6c2423a2
+bytes: 7734685
+etag: "0x8DF4CED72DD31A5"
+last_modified: Sat, 28 Nov 2026 01:18:02 GMT
